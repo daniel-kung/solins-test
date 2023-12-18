@@ -1,4 +1,4 @@
-use mpl_token_metadata::instruction::approve_collection_authority;
+use mpl_token_metadata::instructions::ApproveCollectionAuthority;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -23,7 +23,7 @@ pub fn process_approve_collection(program_id: &Pubkey, accounts: &[AccountInfo])
     let rent_info = next_account_info(account_info_iter)?;
     let system_info = next_account_info(account_info_iter)?;
 
-    assert_eq_pubkey(&metadata_program_info, &mpl_token_metadata::id())?;
+    assert_eq_pubkey(&metadata_program_info, &mpl_token_metadata::programs::MPL_TOKEN_METADATA_ID)?;
     assert_eq_pubkey(&token_program_info, &spl_token::id())?;
     assert_eq_pubkey(&rent_info, &sysvar::rent::id())?;
     assert_eq_pubkey(&system_info, &solana_program::system_program::id())?;
@@ -42,16 +42,18 @@ pub fn process_approve_collection(program_id: &Pubkey, accounts: &[AccountInfo])
     ];
 
     msg!("approve collection");
+    let aca = ApproveCollectionAuthority{
+        collection_authority_record:*collection_authority_record.key,
+        new_collection_authority:*pda_creator_info.key,
+        update_authority:*signer_info.key,
+        payer:*signer_info.key,
+        metadata:*metadata_info.key,
+        mint:*mint_info.key,
+        system_program:*system_info.key,
+        rent:Some(*rent_info.key),
+    };
     invoke(
-        &approve_collection_authority(
-            *metadata_program_info.key,
-            *collection_authority_record.key,
-            *pda_creator_info.key,
-            *signer_info.key,
-            *signer_info.key,
-            *metadata_info.key,
-            *mint_info.key,
-        ),
+        &aca.instruction(),
         &approve_collection_accounts,
     )?;
 

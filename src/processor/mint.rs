@@ -1,9 +1,10 @@
 use crate::{ferror, state::*, utils::*};
 use borsh::BorshSerialize;
-use mpl_token_metadata::instruction::{
-    create_master_edition_v3, create_metadata_accounts_v2, verify_collection,
+use mpl_token_metadata::instructions::{
+    VerifyCollection, CreateMasterEditionV3, CreateMasterEditionV3InstructionArgs,
+    CreateMetadataAccountV3, CreateMetadataAccountV3InstructionArgs,
 };
-use mpl_token_metadata::state::Collection;
+use mpl_token_metadata::types::{Collection, Creator, DataV2};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -42,8 +43,9 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     assert_eq_pubkey_2(&charge_info, &pro_data.char_addr)?;
 
     let name = collection_data.name.clone();
+    let symbol = collection_data.symbol.clone();
     let uri = collection_data.uri.clone();
-
+    let fee = collection_data.fee.clone();
     let now_ts = now_timestamp();
     //check sale state
     if !pro_data.public_start_ts > now_ts {
@@ -62,7 +64,6 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         &[pda_bump],
     ];
 
-
     let price = pro_data.sale_price;
     invoke(
         &system_instruction::transfer(&signer_info.key, &pro_data.char_addr, price),
@@ -74,7 +75,7 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     )?;
 
     //deal creators
-    let mut creators = vec![mpl_token_metadata::state::Creator {
+    let mut creators = vec![Creator {
         address: *pda_creator_info.key,
         verified: true,
         share: 0,
@@ -84,27 +85,54 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     }
 
     //create metadata
+    let cmv3 = CreateMetadataAccountV3 {
+        metadata: *metadata_info.key,
+        mint: *mint_info.key,
+        mint_authority: *signer_info.key,
+        payer: *signer_info.key,
+        update_authority: (*pda_creator_info.key, true),
+        system_program: *system_info.key,
+        rent: Some(*rent_info.key),
+    };
+    let data = DataV2 {
+        name: name,
+        symbol: symbol,
+        uri: uri,
+        seller_fee_basis_points: fee,
+        creators: Some(creators),
+        collection: Some(Collection {
+            verified: false,
+            key: *collection_mint.key,
+        }),
+        uses: None,
+    };
+    let cmv3_args = CreateMetadataAccountV3InstructionArgs {
+        data: data,
+        is_mutable: true,
+        collection_details: None,
+    };
     invoke_signed(
-        &create_metadata_accounts_v2(
-            *metadata_program_info.key,
-            *metadata_info.key,
-            *mint_info.key,
-            *signer_info.key,
-            *signer_info.key,
-            *pda_creator_info.key,
-            name,
-            collection_data.symbol.clone(),
-            uri,
-            Some(creators),
-            collection_data.fee,
-            true,
-            true,
-            Some(Collection {
-                verified: false,
-                key: *collection_mint.key,
-            }),
-            None,
-        ),
+        &cmv3.instruction(cmv3_args),
+        // &create_metadata_accounts_v2(
+        //     *metadata_program_info.key,
+        //     *metadata_info.key,
+        //     *mint_info.key,
+        //     *signer_info.key,
+        //     *signer_info.key,
+        //     *pda_creator_info.key,
+        //     name,
+        //     collection_data.symbol.clone(),
+        //     uri,
+        //     Some(creators),
+        //     collection_data.fee,
+        //     true,
+        //     true,
+        //     Some(Collection {
+        //         verified: false,
+        //         key: *collection_mint.key,
+        //     }),
+        //     None,
+        // ),
         &[
             metadata_info.clone(),
             mint_info.clone(),
@@ -120,17 +148,34 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     )?;
 
     //create edition
+    msg!("Create Master Edition");
+    let cmev3 = CreateMasterEditionV3 {
+        edition: *edition_info.key,
+        mint: *mint_info.key,
+        update_authority: *pda_creator_info.key,
+        mint_authority: *signer_info.key,
+        payer: *signer_info.key,
+        metadata: *metadata_info.key,
+        token_program: *token_program_info.key,
+        system_program: *system_info.key,
+        rent: Some(*rent_info.key),
+    };
+    let cmev3_args = CreateMasterEditionV3InstructionArgs {
+        max_supply: Some(0),
+    };
+
     invoke_signed(
-        &create_master_edition_v3(
-            *metadata_program_info.key,
-            *edition_info.key,
-            *mint_info.key,
-            *pda_creator_info.key,
-            *signer_info.key,
-            *metadata_info.key,
-            *signer_info.key,
-            Some(0),
-        ),
+        &cmev3.instruction(cmev3_args),
+        // &create_master_edition_v3(
+        //     *metadata_program_info.key,
+        //     *edition_info.key,
+        //     *mint_info.key,
+        //     *pda_creator_info.key,
+        //     *signer_info.key,
+        //     *metadata_info.key,
+        //     *signer_info.key,
+        //     Some(0),
+        // ),
         &[
             edition_info.clone(),
             mint_info.clone(),
@@ -145,18 +190,28 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         &[&pda_seed],
     )?;
 
-    //verify collection
+    msg!("verify collection");
+    let vc = VerifyCollection{
+        metadata:*metadata_info.key,
+        collection_authority: *pda_creator_info.key,
+        payer:*signer_info.key,
+        collection_mint:*collection_mint.key,
+        collection:*collection_metadata.key,
+        collection_master_edition_account:*collection_master_edition_account.key,
+        collection_authority_record:Some(*collection_authority_record.key),
+    };
     invoke_signed(
-        &verify_collection(
-            *metadata_program_info.key,
-            *metadata_info.key,
-            *pda_creator_info.key,
-            *signer_info.key,
-            *collection_mint.key,
-            *collection_metadata.key,
-            *collection_master_edition_account.key,
-            Some(*collection_authority_record.key),
-        ),
+        &vc.instruction(),
+        // &verify_collection(
+        //     *metadata_program_info.key,
+        //     *metadata_info.key,
+        //     *pda_creator_info.key,
+        //     *signer_info.key,
+        //     *collection_mint.key,
+        //     *collection_metadata.key,
+        //     *collection_master_edition_account.key,
+        //     Some(*collection_authority_record.key),
+        // ),
         &[
             collection_mint.clone(),
             signer_info.clone(),

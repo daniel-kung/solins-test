@@ -1,11 +1,11 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo,
-    borsh::try_from_slice_unchecked,
+    borsh0_10::try_from_slice_unchecked,
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use mpl_token_metadata::state::Creator;
+use mpl_token_metadata::types::Creator;
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Default, PartialEq)]
