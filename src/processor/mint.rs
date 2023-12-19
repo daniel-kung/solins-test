@@ -48,7 +48,7 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let fee = collection_data.fee.clone();
     let now_ts = now_timestamp();
     //check sale state
-    if !pro_data.public_start_ts > now_ts {
+    if pro_data.public_start_ts > now_ts {
         return ferror!("sale not open");
     }
 
