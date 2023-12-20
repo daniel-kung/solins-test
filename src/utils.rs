@@ -382,17 +382,36 @@ pub fn spl_token_mint_to<'a>(
     Ok(())
 }
 
-pub fn merkle_proof_verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
-    let mut computed_hash = leaf;
-    for proof_element in proof.into_iter() {
-        if computed_hash <= proof_element {
-            // Hash(current computed hash + current element of the proof)
-            computed_hash = solana_program::keccak::hashv(&[&computed_hash, &proof_element]).0;
-        } else {
-            // Hash(current element of the proof + current computed hash)
-            computed_hash = solana_program::keccak::hashv(&[&proof_element, &computed_hash]).0;
-        }
-    }
-    // Check if the computed hash (root) is equal to the provided root
-    computed_hash == root
+#[inline(always)]
+pub fn spl_token_burn<'a>(
+    token_program: &AccountInfo<'a>,
+    new_mint: &AccountInfo<'a>,
+    token_account: &AccountInfo<'a>,
+    authority: &AccountInfo<'a>,
+    mint_to_seeds: &[&[u8]],
+    rent_info: &AccountInfo<'a>,
+    amt: u64,
+) -> Result<(), ProgramError> {
+    msg!("spl_token_mint_to mint");
+    invoke_signed(
+        &spl_token::instruction::burn(
+            token_program.key,
+            token_account.key,
+            new_mint.key,
+            authority.key,
+            &[authority.key],
+            amt,
+        )?,
+        &[
+            token_program.clone(),
+            new_mint.clone(),
+            token_account.clone(),
+            authority.clone(),
+            rent_info.clone(),
+        ],
+        &[mint_to_seeds],
+    )?;
+
+    msg!("spl_token_burn success");
+    Ok(())
 }

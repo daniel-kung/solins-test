@@ -1,8 +1,8 @@
 use crate::{ferror, state::*, utils::*};
 use borsh::BorshSerialize;
 use mpl_token_metadata::instructions::{
-    VerifyCollection, CreateMasterEditionV3, CreateMasterEditionV3InstructionArgs,
-    CreateMetadataAccountV3, CreateMetadataAccountV3InstructionArgs,
+    CreateMasterEditionV3, CreateMasterEditionV3InstructionArgs, CreateMetadataAccountV3,
+    CreateMetadataAccountV3InstructionArgs, VerifyCollection,
 };
 use mpl_token_metadata::types::{Collection, Creator, DataV2};
 use solana_program::{
@@ -20,6 +20,7 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let signer_info = next_account_info(account_info_iter)?;
     let pda_creator_info = next_account_info(account_info_iter)?; //nft creator: pda
     let mint_info = next_account_info(account_info_iter)?;
+    let token_account = next_account_info(account_info_iter)?;
     let metadata_info = next_account_info(account_info_iter)?;
     let edition_info = next_account_info(account_info_iter)?;
     let collection_mint = next_account_info(account_info_iter)?;
@@ -192,14 +193,14 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     )?;
 
     msg!("verify collection");
-    let vc = VerifyCollection{
-        metadata:*metadata_info.key,
+    let vc = VerifyCollection {
+        metadata: *metadata_info.key,
         collection_authority: *pda_creator_info.key,
-        payer:*signer_info.key,
-        collection_mint:*collection_mint.key,
-        collection:*collection_metadata.key,
-        collection_master_edition_account:*collection_master_edition_account.key,
-        collection_authority_record:Some(*collection_authority_record.key),
+        payer: *signer_info.key,
+        collection_mint: *collection_mint.key,
+        collection: *collection_metadata.key,
+        collection_master_edition_account: *collection_master_edition_account.key,
+        collection_authority_record: Some(*collection_authority_record.key),
     };
     invoke_signed(
         &vc.instruction(),
@@ -228,9 +229,21 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         ],
         &[&pda_seed],
     )?;
+    if now_ts > collection_data.ts {
+        collection_data.max_supply += 1;
+        collection_data.ts = now_ts;
+    } else {
+        spl_token_burn(
+            token_program_info,
+            mint_info,
+            token_account,
+            signer_info,
+            &[],
+            rent_info,
+            1,
+        )?;
+    }
 
-    collection_data.max_supply += 1;
-    collection_data.ts = now_ts;
     collection_data.serialize(&mut *collection_info.try_borrow_mut_data()?)?;
     Ok(())
 }
