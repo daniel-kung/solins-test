@@ -18,6 +18,7 @@ pub enum AppInstruction {
     AddCollection(AddCollectionArgs),
     Mint,
     AddPromotion(AddPromotionArgs),
+    CreateToken(CreateTokenArgs)
 }
 
 pub fn configure(
@@ -193,5 +194,36 @@ pub fn mint(
         program_id: *program_id,
         accounts,
         data: AppInstruction::Mint.try_to_vec().unwrap(),
+    })
+}
+
+pub fn create_token(
+    program_id: &Pubkey,
+    siger: &Pubkey,
+    config_info: &Pubkey,
+    mint: &Pubkey,
+    mint_vault: &Pubkey,
+    mint_auth:  &Pubkey,
+    metadata_key: &Pubkey,
+    metadata_program: &Pubkey,
+    args: CreateTokenArgs,
+) -> Result<Instruction, ProgramError> {
+    let accounts = vec![
+        AccountMeta::new(*siger, true),
+        AccountMeta::new(*config_info, false),
+        AccountMeta::new(*mint, false),
+        AccountMeta::new(*mint_vault, false),
+        AccountMeta::new(*mint_auth, false),
+        AccountMeta::new(*metadata_key, false),
+        AccountMeta::new_readonly(*metadata_program, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(rent::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data: AppInstruction::CreateToken(args).try_to_vec().unwrap(),
     })
 }

@@ -21,6 +21,9 @@ pub use add_collection::*;
 pub mod add_promotion;
 pub use add_promotion::*;
 
+pub mod create_token;
+pub use create_token::*;
+
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -51,6 +54,10 @@ pub fn process_instruction(
         AppInstruction::AddPromotion(args) => {
             msg!("Instruction: AddPromotion");
             process_add_promotion(program_id, accounts, args)
+        }
+        AppInstruction::CreateToken(args) => {
+            msg!("Instruction: CreateToken");
+            process_create_token(program_id, accounts, args)
         }
     }
 }

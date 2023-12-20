@@ -35,6 +35,7 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let system_info = next_account_info(account_info_iter)?;
 
     assert_signer(&signer_info)?;
+    assert_eq_pubkey(&token_program_info, &spl_token::id())?;
     assert_eq_pubkey_0(&rent_info, &sysvar::rent::id())?;
     assert_eq_pubkey_1(&system_info, &solana_program::system_program::id())?;
 
@@ -229,6 +230,7 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     )?;
 
     collection_data.max_supply += 1;
+    collection_data.ts = now_ts;
     collection_data.serialize(&mut *collection_info.try_borrow_mut_data()?)?;
     Ok(())
 }

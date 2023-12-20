@@ -60,7 +60,6 @@ pub fn process_add_collection(
     collection_data.name = args.name;
     collection_data.symbol = args.symbol;
     collection_data.uri = args.uri;
-
     collection_data.serialize(&mut &mut collection_info.data.borrow_mut()[..])?;
 
     Ok(())

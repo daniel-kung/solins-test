@@ -65,6 +65,7 @@ pub struct AddCollectionArgs {
     pub symbol: String,
     /// default uri
     pub uri: String,
+    pub ts: u64,
 
 }
 
@@ -103,8 +104,42 @@ impl PromotionData {
         }
         try_from_slice_unchecked(&a.data.borrow_mut()).map_err(|_| ProgramError::InvalidAccountData)
     }
-
 }
+
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq)]
+pub struct CreateTokenArgs {
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
+    pub decimals: u8
+}
+
+
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq)]
+pub struct  TokenData {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+    pub mint: Pubkey,
+    pub creator: Pubkey,
+    pub supply: u64,
+}
+
+impl TokenData {
+    // pub const LEN: usize = 8 * 9 + 4 + 32 * 3 + 32 * 100 + 4;
+    pub const LEN: usize = 32 + 10 + 1 + 32 + 32 + 8;
+
+    pub fn from_account_info(a: &AccountInfo) -> Result<TokenData, ProgramError> {
+        if a.data_len() != Self::LEN {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        try_from_slice_unchecked(&a.data.borrow_mut()).map_err(|_| ProgramError::InvalidAccountData)
+    }
+}
+
+
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Default, PartialEq)]
@@ -122,3 +157,4 @@ impl UserData {
         try_from_slice_unchecked(&a.data.borrow_mut()).map_err(|_| ProgramError::InvalidAccountData)
     }
 }
+
