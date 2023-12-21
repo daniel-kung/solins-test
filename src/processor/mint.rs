@@ -30,6 +30,7 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let promotion_info = next_account_info(account_info_iter)?;
     let collection_info = next_account_info(account_info_iter)?;
     let charge_info = next_account_info(account_info_iter)?;
+    let user_info = next_account_info(account_info_iter)?;
     let metadata_program_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
@@ -43,6 +44,26 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     let pro_data = PromotionData::from_account_info(promotion_info)?;
     let mut collection_data = CollectionData::from_account_info(collection_info)?;
     assert_eq_pubkey_2(&charge_info, &pro_data.char_addr)?;
+
+    let user_bump = assert_user_info(program_id, &signer_info.key, user_info)?;
+    let user_seeds = [
+        program_id.as_ref(),
+        signer_info.key.as_ref(),
+        "user_info".as_bytes(),
+        &[user_bump],
+    ];
+
+    if user_info.data_is_empty() {
+        create_or_allocate_account_raw(
+            *program_id,
+            user_info,
+            rent_info,
+            system_info,
+            signer_info,
+            UserData::LEN,
+            &user_seeds
+        )?;
+    }
 
     let name = collection_data.name.clone();
     let symbol = collection_data.symbol.clone();
@@ -229,9 +250,12 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         ],
         &[&pda_seed],
     )?;
+    let mut user_data = UserData::from_account_info(user_info)?;
+    user_data.shots += 1;
     if now_ts > collection_data.ts {
         collection_data.max_supply += 1;
         collection_data.ts = now_ts;
+        user_data.minted += 1;
     } else {
         spl_token_burn(
             token_program_info,
@@ -243,7 +267,8 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
             1,
         )?;
     }
-
+    
+    user_data.serialize(&mut *user_info.try_borrow_mut_data()?)?;
     collection_data.serialize(&mut *collection_info.try_borrow_mut_data()?)?;
     Ok(())
 }

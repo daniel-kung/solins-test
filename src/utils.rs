@@ -80,6 +80,11 @@ pub fn assert_token_info(program_id: &Pubkey,new_mint: &Pubkey, account: &Accoun
     assert_derivation(&program_id, &account, path)
 }
 
+pub fn assert_user_info(program_id: &Pubkey,user: &Pubkey, account: &AccountInfo) -> Result<u8, ProgramError> {
+    let path = &[program_id.as_ref(), user.as_ref(), "user_info".as_bytes()];
+    assert_derivation(&program_id, &account, path)
+}
+
 pub fn assert_signer(account_info: &AccountInfo) -> ProgramResult {
     if !account_info.is_signer {
         Err(ProgramError::MissingRequiredSignature)

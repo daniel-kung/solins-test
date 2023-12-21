@@ -145,10 +145,11 @@ impl TokenData {
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Default, PartialEq)]
 pub struct UserData {
     pub minted: u16,
+    pub shots: u16
 }
 
 impl UserData {
-    pub const LEN: usize = 2;
+    pub const LEN: usize = 4;
 
     pub fn from_account_info(a: &AccountInfo) -> Result<UserData, ProgramError> {
         if a.data_len() != Self::LEN {

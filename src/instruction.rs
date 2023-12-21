@@ -169,6 +169,7 @@ pub fn mint(
     promotion_info: &Pubkey,    
     collection_info: &Pubkey,
     charge_info: &Pubkey,
+    user_info: &Pubkey,
     metadata_program_info: &Pubkey,
     token_program_info: &Pubkey,   
 ) -> Result<Instruction, ProgramError> {
@@ -186,6 +187,7 @@ pub fn mint(
         AccountMeta::new(*promotion_info, false),        
         AccountMeta::new(*collection_info, false),
         AccountMeta::new(*charge_info, false),
+        AccountMeta::new(*user_info, false),
         AccountMeta::new_readonly(*metadata_program_info, false),
         AccountMeta::new_readonly(*token_program_info, false),    
         AccountMeta::new_readonly(rent::id(), false),  
