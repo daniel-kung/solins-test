@@ -252,11 +252,11 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     )?;
     let mut user_data = UserData::from_account_info(user_info)?;
     user_data.shots += 1;
-    // if now_ts > collection_data.ts {
-    //     collection_data.max_supply += 1;
-    //     collection_data.ts = now_ts;
-    //     user_data.minted += 1;
-    // } else {
+    if now_ts > collection_data.ts {
+        collection_data.max_supply += 1;
+        collection_data.ts = now_ts;
+        user_data.minted += 1;
+    } else {
         spl_token_burn(
             token_program_info,
             mint_info,
@@ -266,7 +266,7 @@ pub fn process_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
             rent_info,
             1,
         )?;
-    // }
+    }
 
     user_data.serialize(&mut *user_info.try_borrow_mut_data()?)?;
     collection_data.serialize(&mut *collection_info.try_borrow_mut_data()?)?;
